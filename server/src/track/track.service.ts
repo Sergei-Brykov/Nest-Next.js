@@ -5,16 +5,20 @@ import {Model, ObjectId} from "mongoose";
 import {Comment, CommentDocument} from "./schema/comment.schema";
 import {CreateTrackDto} from "./dto/create-track.dto";
 import {CreateCommentDto} from "./dto/create-comment.dto";
+import {FileService, FileType} from "../file/file.service";
 
 @Injectable()
 export class TrackService {
     constructor(@InjectModel(Track.name) private trackModel: Model<TrackDocument>,
-                @InjectModel(Comment.name) private commentModel: Model<CommentDocument>) {
+                @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
+                private fileService: FileService) {
     }
 
 
     async create(dto: CreateTrackDto, audio, picture): Promise<Track> {
-        return await this.trackModel.create({...dto, listens: 0, audio, picture})
+        const pathAudio = this.fileService.createFile(FileType.AUDIO, audio)
+        const pathPicture = this.fileService.createFile(FileType.PICTURE, picture)
+        return await this.trackModel.create({...dto, listens: 0, audio: pathAudio, picture: pathPicture})
     }
 
     async getAll(): Promise<Track[]> {
@@ -39,5 +43,13 @@ export class TrackService {
         track.comments.push(comment._id)
         await track.save()
         return comment
+    }
+
+    async listen(id: ObjectId): Promise<Track> {
+        const track = await this.trackModel.findById(id)
+        track.listens += 1
+        await track.save()
+
+        return track
     }
 }
